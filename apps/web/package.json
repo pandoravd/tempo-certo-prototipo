@@ -1,0 +1,14 @@
+{
+  "name": "@tempo-certo/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "start": "npx --yes serve dist -p 4173"
+  },
+  "dependencies": {
+    "@tempo-certo/calculation-core": "0.1.0",
+    "@tempo-certo/reference-tables": "0.1.0"
+  }
+}

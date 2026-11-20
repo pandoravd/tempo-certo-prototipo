@@ -1,0 +1,16 @@
+{
+  "name": "tempo-certo",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @tempo-certo/reference-tables && npm run build -w @tempo-certo/calculation-core && npm run build -w @tempo-certo/web && npm run build -w @tempo-certo/desktop",
+    "test": "npm run test -w @tempo-certo/reference-tables && npm run test -w @tempo-certo/calculation-core",
+    "test:core": "npm run test -w @tempo-certo/calculation-core"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

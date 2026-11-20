@@ -1,0 +1,15 @@
+{
+  "name": "@tempo-certo/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Desktop shell (Tauri-ready) consuming calculation-core",
+  "scripts": {
+    "build": "node ./scripts/build.mjs",
+    "start": "node ./dist/cli.js"
+  },
+  "dependencies": {
+    "@tempo-certo/calculation-core": "0.1.0",
+    "@tempo-certo/reference-tables": "0.1.0"
+  }
+}
