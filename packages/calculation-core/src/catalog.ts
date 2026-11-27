@@ -159,6 +159,55 @@ const CATALOG: ModalityDefinition[] = [
     group: 'extras',
     wave: 'P1',
   },
+  {
+    id: 'sumula-2-trf4',
+    delphiIndex: null,
+    name: 'Súmula 2 do TRF 4ª Região',
+    group: 'revisao',
+    wave: 'P2',
+  },
+  {
+    id: 'teto-ec20-ec41',
+    delphiIndex: null,
+    name: 'Teto EC 20/98 e EC 41/03',
+    group: 'revisao',
+    wave: 'P2',
+  },
+  {
+    id: 'buraco-negro',
+    delphiIndex: null,
+    name: 'Buraco Negro',
+    group: 'revisao',
+    wave: 'P2',
+  },
+  {
+    id: 'art58-adct',
+    delphiIndex: null,
+    name: 'Art. 58 do ADCT',
+    group: 'revisao',
+    wave: 'P2',
+  },
+  {
+    id: 'irsm-0294',
+    delphiIndex: null,
+    name: 'IRSM 02/94',
+    group: 'revisao',
+    wave: 'P2',
+  },
+  {
+    id: 'art21',
+    delphiIndex: null,
+    name: 'Art. 21',
+    group: 'revisao',
+    wave: 'P2',
+  },
+  {
+    id: 'art26',
+    delphiIndex: null,
+    name: 'Art. 26',
+    group: 'revisao',
+    wave: 'P2',
+  },
 ];
 
 export function listModalities(): ModalityDefinition[] {
@@ -184,5 +233,5 @@ export function resolveModalityId(id: string): { parentId: string; variantId?: s
 }
 
 export function catalogVersion(): string {
-  return '1.0.0';
+  return '1.1.0';
 }

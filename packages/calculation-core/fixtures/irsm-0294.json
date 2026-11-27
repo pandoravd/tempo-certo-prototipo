@@ -1,0 +1,23 @@
+{
+  "modalityId": "irsm-0294",
+  "source": "documented-rule",
+  "tablesVersionId": "tables-sample-v3",
+  "tolerance": { "rmi": 0.01, "fatorIrsm": 0.0001 },
+  "case": {
+    "client": { "nome": "Segurado Fixture P2", "requerimento": "1994-03-01" },
+    "jobs": [
+      { "employer": "Emprego A", "start": "1980-01-01", "end": "1993-12-31", "factor": 1 }
+    ],
+    "salaries": [
+      { "competence": "1993-01", "value": 1000 },
+      { "competence": "1993-06", "value": 1100 },
+      { "competence": "1994-01", "value": 1200 }
+    ]
+  },
+  "expectedTotals": {
+    "rmi": 210,
+    "fatorIrsm": 1.3994,
+    "salarioBeneficio": 300,
+    "coeficiente": 0.7
+  }
+}

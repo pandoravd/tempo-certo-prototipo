@@ -1,0 +1,21 @@
+{
+  "modalityId": "tempo-contribuicao",
+  "source": "documented-rule",
+  "tablesVersionId": "tables-sample-v1",
+  "tolerance": { "anos": 0, "meses": 0, "dias": 0, "totalDias": 0 },
+  "case": {
+    "client": { "nome": "Segurado Fixture P0" },
+    "jobs": [
+      { "employer": "Tempo 1", "start": "1986-02-01", "end": "1990-06-12", "factor": 1 },
+      { "employer": "Tempo 2", "start": "1990-12-03", "end": "1994-06-02", "factor": 1 },
+      { "employer": "Tempo 3", "start": "1994-07-01", "end": "2019-09-30", "factor": 1 }
+    ],
+    "salaries": []
+  },
+  "expectedTotals": {
+    "anos": 33,
+    "meses": 1,
+    "dias": 7,
+    "totalDias": 12082
+  }
+}

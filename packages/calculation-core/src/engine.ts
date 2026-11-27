@@ -1,261 +1,47 @@
 import type { TableSet } from '@tempo-certo/reference-tables';
-import { defaultTables, lookupCeiling, lookupIndex, lookupMinimumWage } from '@tempo-certo/reference-tables';
-import { resolveModalityId, catalogVersion } from './catalog.js';
+import { defaultTables } from '@tempo-certo/reference-tables';
+import { resolveModalityId } from './catalog.js';
 import type { CaseRecord } from './case.js';
 import {
-  addYmd,
-  applyCeiling,
-  applyFactor,
-  betweenDates,
-  daysToYmd,
-  monthProportion,
-  ymdToDays,
-  type Ymd,
-} from './dates.js';
+  runDiferencasArt45,
+  runDiferencasRmi,
+  runDiferencasSb,
+  runDiferencasSm,
+  runDivisorMinimo,
+  runSimularSb,
+} from './modalities/diferencas.js';
+import { runBeneficioEc103 } from './modalities/ec103.js';
+import {
+  runCalculoVersaoAnterior,
+  runContribuicoesAtraso,
+  runPensaoAcumulacao,
+} from './modalities/extras.js';
+import { runMelhorBeneficio } from './modalities/melhor-beneficio.js';
+import {
+  runArt21,
+  runArt26,
+  runArt58Adct,
+  runBuracoNegro,
+  runIrsm0294,
+  runSumula2Trf4,
+  runTetoEc20Ec41,
+} from './modalities/revisoes-p2.js';
+import { runRmiConcomitantes, runRmiLei9876, runRmiOrtnOtn } from './modalities/rmi.js';
+import {
+  CalculationError,
+  ENGINE_VERSION,
+  type CalculationResult,
+  type CalculationTotals,
+} from './modalities/shared.js';
+import { runTempoContribuicao, runTempoEc103 } from './modalities/tempo.js';
 
-export const ENGINE_VERSION = '0.1.0';
-
-export interface CalculationLine {
-  label: string;
-  value: number | string;
-  meta?: Record<string, unknown>;
-}
-
-export interface CalculationTotals {
-  [key: string]: number | string | Ymd;
-}
-
-export interface CalculationResult {
-  modalityId: string;
-  parentModalityId: string;
-  variantId?: string;
-  engineVersion: string;
-  catalogVersion: string;
-  tablesVersionId: string;
-  totals: CalculationTotals;
-  lines: CalculationLine[];
-}
-
-export class CalculationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'CalculationError';
-  }
-}
-
-function requireJobs(caseRecord: CaseRecord): void {
-  if (!caseRecord.jobs.length) {
-    throw new CalculationError('Vínculos obrigatórios para esta modalidade');
-  }
-}
-
-function sumContributionTime(caseRecord: CaseRecord): { total: Ymd; lines: CalculationLine[] } {
-  requireJobs(caseRecord);
-  let total: Ymd = { years: 0, months: 0, days: 0 };
-  const lines: CalculationLine[] = [];
-  for (const job of caseRecord.jobs) {
-    const raw = betweenDates(job.start, job.end);
-    const factored = applyFactor(raw, job.factor ?? 1);
-    total = addYmd(total, factored);
-    lines.push({
-      label: job.employer || 'Vínculo',
-      value: `${factored.years}a ${factored.months}m ${factored.days}d`,
-      meta: { start: job.start, end: job.end, factor: job.factor ?? 1, especial: !!job.especial },
-    });
-  }
-  return { total, lines };
-}
-
-function computeRmi(caseRecord: CaseRecord, tables: TableSet): CalculationResult {
-  if (!caseRecord.salaries.length) {
-    throw new CalculationError('Salários obrigatórios para cálculo de RMI');
-  }
-  const indexed = caseRecord.salaries.map((s) => {
-    const idx = lookupIndex(tables, s.competence);
-    const ceiling = lookupCeiling(tables, s.competence);
-    const updated = applyCeiling(s.value * idx, ceiling);
-    return { ...s, indexed: updated, idx, ceiling };
-  });
-  const avg = indexed.reduce((a, s) => a + s.indexed, 0) / indexed.length;
-  const time = caseRecord.jobs.length ? sumContributionTime(caseRecord).total : { years: 0, months: 0, days: 0 };
-  const years = Math.max(time.years, 15);
-  const coefficient = Math.min(1, 0.7 + Math.max(0, years - 15) * 0.01);
-  const rmi = avg * coefficient;
-  return {
-    modalityId: 'rmi-lei-9876',
-    parentModalityId: 'rmi-lei-9876',
-    engineVersion: ENGINE_VERSION,
-    catalogVersion: catalogVersion(),
-    tablesVersionId: tables.versionId,
-    totals: {
-      salarioBeneficio: round2(avg),
-      coeficiente: round4(coefficient),
-      rmi: round2(rmi),
-      contribuicoes: indexed.length,
-    },
-    lines: indexed.map((s) => ({
-      label: s.competence,
-      value: round2(s.indexed),
-      meta: { original: s.value, index: s.idx, ceiling: s.ceiling },
-    })),
-  };
-}
-
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-function round4(n: number): number {
-  return Math.round(n * 10000) / 10000;
-}
-
-function differenceResult(
-  modalityId: string,
-  caseRecord: CaseRecord,
-  tables: TableSet,
-  mode: 'rmi' | 'sb' | 'sm' | 'art45',
-): CalculationResult {
-  const base = computeRmi(caseRecord, tables);
-  const original = Number(base.totals.rmi);
-  let nova = original;
-  if (mode === 'sb') nova = original * 1.05;
-  if (mode === 'sm') {
-    const req = caseRecord.client.requerimento || '2025-09-01';
-    const sm = lookupMinimumWage(tables, req.slice(0, 7));
-    nova = Math.max(original, sm);
-  }
-  if (mode === 'art45') nova = original * 1.25;
-  if (mode === 'rmi') nova = original * 1.08;
-  const diff = round2(nova - original);
-  return {
-    modalityId,
-    parentModalityId: modalityId,
-    engineVersion: ENGINE_VERSION,
-    catalogVersion: catalogVersion(),
-    tablesVersionId: tables.versionId,
-    totals: { rmiOriginal: original, rmiNova: round2(nova), diferenca: diff },
-    lines: [
-      { label: 'RMI original', value: original },
-      { label: 'RMI nova', value: round2(nova) },
-      { label: 'Diferença', value: diff },
-    ],
-  };
-}
-
-function melhorBeneficio(modalityId: string, caseRecord: CaseRecord, tables: TableSet): CalculationResult {
-  const base = computeRmi(caseRecord, tables);
-  const rmi = Number(base.totals.rmi);
-  const candidates = [rmi, rmi * 0.98, rmi * 1.02];
-  const best = Math.max(...candidates);
-  return {
-    modalityId,
-    parentModalityId: modalityId,
-    engineVersion: ENGINE_VERSION,
-    catalogVersion: catalogVersion(),
-    tablesVersionId: tables.versionId,
-    totals: { melhorRmi: round2(best), candidatos: candidates.length },
-    lines: candidates.map((c, i) => ({ label: `Cenário ${i + 1}`, value: round2(c) })),
-  };
-}
-
-function ec103Value(modalityId: string, variantId: string | undefined, caseRecord: CaseRecord, tables: TableSet): CalculationResult {
-  const base = computeRmi(caseRecord, tables);
-  const sb = Number(base.totals.salarioBeneficio);
-  const time = caseRecord.jobs.length ? sumContributionTime(caseRecord).total : { years: 0, months: 0, days: 0 };
-  let coef = 0.6 + Math.max(0, time.years - 20) * 0.02;
-  if (variantId?.includes('pedagio-50')) coef += 0.02;
-  if (variantId?.includes('pedagio-100')) coef += 0.04;
-  if (variantId?.includes('especial')) coef += 0.01;
-  coef = Math.min(1, coef);
-  const beneficio = round2(sb * coef);
-  return {
-    modalityId,
-    parentModalityId: 'beneficio-ec103',
-    variantId,
-    engineVersion: ENGINE_VERSION,
-    catalogVersion: catalogVersion(),
-    tablesVersionId: tables.versionId,
-    totals: { salarioBeneficio: sb, coeficiente: round4(coef), beneficio, tempo: time },
-    lines: [
-      { label: 'Salário de benefício', value: sb },
-      { label: 'Coeficiente EC 103', value: round4(coef) },
-      { label: 'Benefício', value: beneficio },
-    ],
-  };
-}
-
-function divisorMinimo(caseRecord: CaseRecord, tables: TableSet): CalculationResult {
-  if (!caseRecord.salaries.length) throw new CalculationError('Salários obrigatórios para divisor mínimo');
-  const count = caseRecord.salaries.length;
-  const divisor = Math.max(108, count);
-  const sum = caseRecord.salaries.reduce((a, s) => a + s.value * lookupIndex(tables, s.competence), 0);
-  const media = sum / divisor;
-  return {
-    modalityId: 'divisor-minimo',
-    parentModalityId: 'divisor-minimo',
-    engineVersion: ENGINE_VERSION,
-    catalogVersion: catalogVersion(),
-    tablesVersionId: tables.versionId,
-    totals: { contribuicoes: count, divisor, media: round2(media) },
-    lines: [
-      { label: 'Contribuições', value: count },
-      { label: 'Divisor', value: divisor },
-      { label: 'Média', value: round2(media) },
-    ],
-  };
-}
-
-function atrasados(caseRecord: CaseRecord, tables: TableSet): CalculationResult {
-  if (!caseRecord.salaries.length) throw new CalculationError('Competências em atraso obrigatórias');
-  let total = 0;
-  const lines: CalculationLine[] = [];
-  for (const s of caseRecord.salaries) {
-    const sm = lookupMinimumWage(tables, s.competence);
-    const due = Math.max(s.value, sm) * 0.2;
-    total += due;
-    lines.push({ label: s.competence, value: round2(due) });
-  }
-  return {
-    modalityId: 'contribuicoes-atraso',
-    parentModalityId: 'contribuicoes-atraso',
-    engineVersion: ENGINE_VERSION,
-    catalogVersion: catalogVersion(),
-    tablesVersionId: tables.versionId,
-    totals: { total: round2(total), competencias: caseRecord.salaries.length },
-    lines,
-  };
-}
-
-function pensaoAcumulacao(caseRecord: CaseRecord, tables: TableSet): CalculationResult {
-  const base = computeRmi(caseRecord, tables);
-  const pensao = Number(base.totals.rmi) * 0.5;
-  const acumulo = Math.min(pensao, Number(base.totals.rmi) * 0.6);
-  return {
-    modalityId: 'pensao-acumulacao',
-    parentModalityId: 'pensao-acumulacao',
-    engineVersion: ENGINE_VERSION,
-    catalogVersion: catalogVersion(),
-    tablesVersionId: tables.versionId,
-    totals: { pensao: round2(pensao), acumulavel: round2(acumulo) },
-    lines: [
-      { label: 'Pensão base', value: round2(pensao) },
-      { label: 'Valor acumulável', value: round2(acumulo) },
-    ],
-  };
-}
-
-function revisionStub(modalityId: string, caseRecord: CaseRecord, tables: TableSet, factor: number): CalculationResult {
-  const base = computeRmi(caseRecord, tables);
-  const adjusted = round2(Number(base.totals.rmi) * factor);
-  return {
-    modalityId,
-    parentModalityId: modalityId,
-    engineVersion: ENGINE_VERSION,
-    catalogVersion: catalogVersion(),
-    tablesVersionId: tables.versionId,
-    totals: { rmi: adjusted, fator: factor },
-    lines: [{ label: 'RMI revisada', value: adjusted }],
-  };
-}
+export {
+  CalculationError,
+  ENGINE_VERSION,
+  type CalculationLine,
+  type CalculationResult,
+  type CalculationTotals,
+} from './modalities/shared.js';
 
 export function runModality(
   modalityId: string,
@@ -267,81 +53,54 @@ export function runModality(
   const variantId = resolved.variantId;
 
   switch (parent) {
-    case 'tempo-contribuicao': {
-      const { total, lines } = sumContributionTime(caseRecord);
-      return {
-        modalityId: parent,
-        parentModalityId: parent,
-        engineVersion: ENGINE_VERSION,
-        catalogVersion: catalogVersion(),
-        tablesVersionId: tables.versionId,
-        totals: { anos: total.years, meses: total.months, dias: total.days, totalDias: ymdToDays(total) },
-        lines,
-      };
-    }
-    case 'tempo-ec103': {
-      const { total, lines } = sumContributionTime(caseRecord);
-      const bonusDays = variantId === 'tempo-ec103-art16' ? 30 : 0;
-      const adjusted = daysToYmd(ymdToDays(total) + bonusDays);
-      return {
-        modalityId: modalityId,
-        parentModalityId: parent,
-        variantId,
-        engineVersion: ENGINE_VERSION,
-        catalogVersion: catalogVersion(),
-        tablesVersionId: tables.versionId,
-        totals: { anos: adjusted.years, meses: adjusted.months, dias: adjusted.days, artigo: variantId || 'tempo-ec103-art15' },
-        lines,
-      };
-    }
+    case 'tempo-contribuicao':
+      return runTempoContribuicao(caseRecord, tables);
+    case 'tempo-ec103':
+      return runTempoEc103(modalityId, variantId, caseRecord, tables);
     case 'rmi-lei-9876':
-      return computeRmi(caseRecord, tables);
-    case 'rmi-lei-9876-concomitantes': {
-      const base = computeRmi(caseRecord, tables);
-      return { ...base, modalityId: parent, parentModalityId: parent, totals: { ...base.totals, concomitante: 1 } };
-    }
+      return runRmiLei9876(caseRecord, tables);
+    case 'rmi-lei-9876-concomitantes':
+      return runRmiConcomitantes(caseRecord, tables);
     case 'rmi-ortn-otn-8213':
-      return revisionStub(parent, caseRecord, tables, 1.03);
+      return runRmiOrtnOtn(caseRecord, tables);
     case 'diferencas-rmi':
-      return differenceResult(parent, caseRecord, tables, 'rmi');
+      return runDiferencasRmi(caseRecord, tables);
     case 'diferencas-salario-beneficio':
-      return differenceResult(parent, caseRecord, tables, 'sb');
+      return runDiferencasSb(caseRecord, tables);
     case 'diferencas-salario-minimo':
-      return differenceResult(parent, caseRecord, tables, 'sm');
+      return runDiferencasSm(caseRecord, tables);
     case 'diferencas-art45':
-      return differenceResult(parent, caseRecord, tables, 'art45');
-    case 'simular-salarios-beneficio': {
-      if (!caseRecord.salaries.length) throw new CalculationError('Salários obrigatórios para simulação');
-      const lines = caseRecord.salaries.map((s) => {
-        const prop = monthProportion(30);
-        const value = round2(s.value * prop * lookupIndex(tables, s.competence));
-        return { label: s.competence, value };
-      });
-      const total = round2(lines.reduce((a, l) => a + Number(l.value), 0));
-      return {
-        modalityId: parent,
-        parentModalityId: parent,
-        engineVersion: ENGINE_VERSION,
-        catalogVersion: catalogVersion(),
-        tablesVersionId: tables.versionId,
-        totals: { totalSimulado: total },
-        lines,
-      };
-    }
+      return runDiferencasArt45(caseRecord, tables);
+    case 'simular-salarios-beneficio':
+      return runSimularSb(caseRecord, tables);
     case 'melhor-beneficio-tempo':
     case 'melhor-beneficio-idade':
     case 'melhor-beneficio-especial':
-      return melhorBeneficio(parent, caseRecord, tables);
+      return runMelhorBeneficio(parent, caseRecord, tables);
     case 'beneficio-ec103':
-      return ec103Value(modalityId, variantId, caseRecord, tables);
+      return runBeneficioEc103(modalityId, variantId, caseRecord, tables);
     case 'divisor-minimo':
-      return divisorMinimo(caseRecord, tables);
+      return runDivisorMinimo(caseRecord, tables);
     case 'contribuicoes-atraso':
-      return atrasados(caseRecord, tables);
+      return runContribuicoesAtraso(caseRecord, tables);
     case 'pensao-acumulacao':
-      return pensaoAcumulacao(caseRecord, tables);
+      return runPensaoAcumulacao(caseRecord, tables);
     case 'calculo-versao-anterior':
-      return revisionStub(parent, caseRecord, tables, 1);
+      return runCalculoVersaoAnterior(caseRecord, tables);
+    case 'irsm-0294':
+      return runIrsm0294(caseRecord, tables);
+    case 'teto-ec20-ec41':
+      return runTetoEc20Ec41(caseRecord, tables);
+    case 'buraco-negro':
+      return runBuracoNegro(caseRecord, tables);
+    case 'art58-adct':
+      return runArt58Adct(caseRecord, tables);
+    case 'art21':
+      return runArt21(caseRecord, tables);
+    case 'art26':
+      return runArt26(caseRecord, tables);
+    case 'sumula-2-trf4':
+      return runSumula2Trf4(caseRecord, tables);
     default:
       throw new CalculationError(`Modalidade ainda não implementada: ${modalityId}`);
   }
@@ -350,13 +109,14 @@ export function runModality(
 export function compareTotals(
   actual: CalculationTotals,
   expected: CalculationTotals,
-  tolerance = 0.01,
+  tolerance: number | Record<string, number> = 0.01,
 ): { ok: boolean; diffs: string[] } {
   const diffs: string[] = [];
   for (const [key, exp] of Object.entries(expected)) {
     const act = actual[key];
+    const tol = typeof tolerance === 'number' ? tolerance : (tolerance[key] ?? 0.01);
     if (typeof exp === 'number' && typeof act === 'number') {
-      if (Math.abs(act - exp) > tolerance) diffs.push(`${key}: ${act} != ${exp}`);
+      if (Math.abs(act - exp) > tol) diffs.push(`${key}: ${act} != ${exp}`);
     } else if (JSON.stringify(act) !== JSON.stringify(exp)) {
       diffs.push(`${key}: ${JSON.stringify(act)} != ${JSON.stringify(exp)}`);
     }

@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { getTableSet } from '@tempo-certo/reference-tables';
 import { addJob, addSalary, createCase, setModalities } from './case.js';
-import { CalculationError, compareTotals, runModality } from './engine.js';
+import { catalogVersion } from './catalog.js';
+import { CalculationError, compareTotals, ENGINE_VERSION, runModality } from './engine.js';
 
 function sampleCase() {
   let c = createCase({ nome: 'Segurado Exemplo' });
@@ -103,4 +104,12 @@ test('resultado antigo preserva versionId mesmo com V2 disponível', () => {
   assert.equal(r.tablesVersionId, 'tables-sample-v1');
   const v2 = getTableSet('tables-sample-v2');
   assert.notEqual(v2.ceiling['2025-01'], v1.ceiling['2025-01']);
+});
+
+test('metadados expõem ENGINE_VERSION e catalogVersion atuais', () => {
+  const r = runModality('tempo-contribuicao', sampleCase());
+  assert.equal(ENGINE_VERSION, '0.2.0');
+  assert.equal(catalogVersion(), '1.1.0');
+  assert.equal(r.engineVersion, '0.2.0');
+  assert.equal(r.catalogVersion, '1.1.0');
 });

@@ -5,16 +5,27 @@ import {
   getTablesForDate,
   listTableVersions,
   lookupCeiling,
+  lookupIrsm,
   lookupMinimumWage,
+  lookupTetoEc41,
 } from './index.js';
 
 test('lista versões e lookup por competência', () => {
   const versions = listTableVersions();
   assert.ok(versions.includes('tables-sample-v1'));
   assert.ok(versions.includes('tables-sample-v2'));
+  assert.ok(versions.includes('tables-sample-v3'));
   const v1 = getTableSet('tables-sample-v1');
   assert.ok(lookupMinimumWage(v1, '2025-09') > 0);
   assert.ok(lookupCeiling(v1, '2024-01') > 0);
+});
+
+test('V3 cobre IRSM/tetos; V1 sem mapa lança erro claro', () => {
+  const v3 = getTableSet('tables-sample-v3');
+  assert.ok(lookupIrsm(v3, '1994-02') > 1);
+  assert.ok(lookupTetoEc41(v3, '2004-01') > 0);
+  const v1 = getTableSet('tables-sample-v1');
+  assert.throws(() => lookupIrsm(v1, '1994-02'), /IRSM|ausente/);
 });
 
 test('competência fora do início falha ou usa nearest', () => {

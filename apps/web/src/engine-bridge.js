@@ -19,6 +19,13 @@ const NAME_TO_ID = {
   'Simulação de tempo de contribuição - EC 103/2019': 'tempo-ec103',
   'Pensão por morte - Acumulação': 'pensao-acumulacao',
   'Apuração do divisor mínimo': 'divisor-minimo',
+  'Súmula 2 do TRF 4ª Região': 'sumula-2-trf4',
+  'Teto EC 20/98 e EC 41/03': 'teto-ec20-ec41',
+  'Buraco Negro': 'buraco-negro',
+  'Art. 58 do ADCT': 'art58-adct',
+  'IRSM 02/94': 'irsm-0294',
+  'Art. 21': 'art21',
+  'Art. 26': 'art26',
 };
 
 function parseMoney(br) {
@@ -100,6 +107,13 @@ function resolveId(modalityName) {
   if (lower.includes('melhor') && lower.includes('idade')) return 'melhor-beneficio-idade';
   if (lower.includes('melhor') && lower.includes('especial')) return 'melhor-beneficio-especial';
   if (lower.includes('melhor')) return 'melhor-beneficio-tempo';
+  if (lower.includes('irsm')) return 'irsm-0294';
+  if (lower.includes('buraco')) return 'buraco-negro';
+  if (lower.includes('súmula') || lower.includes('sumula')) return 'sumula-2-trf4';
+  if (lower.includes('teto') && lower.includes('ec')) return 'teto-ec20-ec41';
+  if (lower.includes('art. 58') || lower.includes('adct')) return 'art58-adct';
+  if (lower.includes('art. 21') || lower === 'art 21') return 'art21';
+  if (lower.includes('art. 26') || lower === 'art 26') return 'art26';
   throw new Error(`Modalidade sem mapeamento no motor: ${modalityName}`);
 }
 

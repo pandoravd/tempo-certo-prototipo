@@ -170,12 +170,12 @@
     }
   ],
   "relatedRevisions": [
-    { "id": "sumula-2-trf4", "name": "Súmula 2 do TRF 4ª Região", "wave": "P2", "delphiUnits": ["Unit_sum2.pas"] },
-    { "id": "teto-ec20-ec41", "name": "Teto EC 20/98 e EC 41/03", "wave": "P2", "delphiUnits": ["Unit_coeficiente_teto.pas", "Unit_coeficiente_tetos.pas", "UnitMeuteto.pas"] },
-    { "id": "buraco-negro", "name": "Buraco Negro", "wave": "P2", "delphiUnits": ["Unit_bnegro.pas"] },
-    { "id": "art58-adct", "name": "Art. 58 do ADCT", "wave": "P2", "delphiUnits": ["Unit_ADCT.pas"] },
-    { "id": "irsm-0294", "name": "IRSM 02/94", "wave": "P2", "delphiUnits": ["Unit_irsm0294.pas"] },
-    { "id": "art21", "name": "Art. 21", "wave": "P2", "delphiUnits": ["Unit_art21.pas"] },
-    { "id": "art26", "name": "Art. 26", "wave": "P2", "delphiUnits": ["Unit_art26.pas"] }
+    { "id": "sumula-2-trf4", "name": "Súmula 2 do TRF 4ª Região", "wave": "P2", "status": "implemented", "delphiUnits": ["Unit_sum2.pas"] },
+    { "id": "teto-ec20-ec41", "name": "Teto EC 20/98 e EC 41/03", "wave": "P2", "status": "implemented", "delphiUnits": ["Unit_coeficiente_teto.pas", "Unit_coeficiente_tetos.pas", "UnitMeuteto.pas"] },
+    { "id": "buraco-negro", "name": "Buraco Negro", "wave": "P2", "status": "implemented", "delphiUnits": ["Unit_bnegro.pas"] },
+    { "id": "art58-adct", "name": "Art. 58 do ADCT", "wave": "P2", "status": "implemented", "delphiUnits": ["Unit_ADCT.pas"] },
+    { "id": "irsm-0294", "name": "IRSM 02/94", "wave": "P2", "status": "implemented", "delphiUnits": ["Unit_irsm0294.pas"] },
+    { "id": "art21", "name": "Art. 21", "wave": "P2", "status": "implemented", "delphiUnits": ["Unit_art21.pas"] },
+    { "id": "art26", "name": "Art. 26", "wave": "P2", "status": "implemented", "delphiUnits": ["Unit_art26.pas"] }
   ]
 }
